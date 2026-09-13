@@ -1,0 +1,25 @@
+{
+  "rows": 1344,
+  "accuracy_configurations": 336,
+  "pair_outcomes": 33600,
+  "images": 400,
+  "recommendation": "All feasible configurations; highlight every positive maximum joint pose AUC, without a speed-based composite score.",
+  "inputs": [
+    {
+      "file": "current-summary.csv",
+      "sha256": "8d54c4c06037819e5cf7a4e687de280f9df6464bac7a7bf6c8b8b4192cde6062"
+    },
+    {
+      "file": "current-pair-results.csv",
+      "sha256": "6e2d51bc81bcefea318574e317d2b9ec4b19336cfc61128f823644fd1a3893fc"
+    },
+    {
+      "file": "resource-summary.parquet",
+      "sha256": "b78c0caf19604f3f17e01797a63f6a441b0d1366b2e9ce76135b383c1f2b4189"
+    },
+    {
+      "file": "plot_style.py",
+      "sha256": "44e6aed876fecc04f15773bb64f2e5140b31658de253244a7141dd38a18f3636"
+    }
+  ]
+}
