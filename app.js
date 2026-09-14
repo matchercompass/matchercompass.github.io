@@ -86,10 +86,19 @@ function layoutTiles(mode,animate=false){
   });
  }else{
   const columns=3, cellWidth=width/columns;
+  const labelGap=wide?49:44, clearance=24, rowTops=[22];
+  let contentBottom=0;
+  for(let row=0;row<Math.ceil(methods.length/columns);row++){
+   const maxTiles=Math.max(...groups.slice(row*columns,(row+1)*columns).map(g=>g.length));
+   const contentHeight=labelGap+Math.max(0,Math.ceil(maxTiles/4)*pitch-gap);
+   contentBottom=rowTops[row]+contentHeight+clearance;
+   rowTops.push(rowTops[row]+Math.max(wide?184:154,contentHeight+clearance));
+  }
+  board.style.height=Math.max(wide?566:486,contentBottom)+'px';
   methods.forEach((m,mi)=>{
    const group=groups[mi];
    group.sort(state.sort==='accuracy'?(a,b)=>b.auc[ai]-a.auc[ai]:state.sort==='runtime'?(a,b)=>a.runtime-b.runtime:order);
-   const left=mi%columns*cellWidth+Math.max(12,(cellWidth-4*pitch+gap)/2),top=22+Math.floor(mi/columns)*(wide?184:154);
+   const left=mi%columns*cellWidth+Math.max(12,(cellWidth-4*pitch+gap)/2),top=rowTops[Math.floor(mi/columns)];
    label(m.name,left,top,'group-label'+(group.length?'':' no-results'),`<small>${group.length} ${group.length===1?'configuration':'configurations'}</small>`);
    group.forEach((x,i)=>positions.set(id(x),{x:left+(i%4)*pitch,y:top+(wide?49:44)+Math.floor(i/4)*pitch,present:true}));
   });
