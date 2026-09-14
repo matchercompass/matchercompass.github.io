@@ -1,0 +1,125 @@
+{
+  "platforms": [
+    {
+      "platform": "RTX 5070 Ti",
+      "architecture": "x86_64",
+      "nvidia_pytorch_release": "26.05",
+      "container_image_id": "sha256:65a30dbce6ae43e76d6e417ab82946b4c6c5fc0c8727cc6f346defc8d7c21d01",
+      "python": "3.12.3",
+      "pytorch": "2.12.0a0+5aff3928d8.nv26.05",
+      "cuda_toolkit": "13.2.1.009",
+      "pytorch_cuda": "13.2",
+      "cudnn_package": "9.22.0.52",
+      "cudnn_runtime": 92200,
+      "opencv": "4.15.0-dev",
+      "opencv_cuda_architectures": [
+        "120"
+      ],
+      "pycolmap": "3.13.0",
+      "power_setting": "300 W",
+      "cpu_governor": "performance",
+      "clock_setting": "Persistence mode enabled; no additional GPU clock lock"
+    },
+    {
+      "platform": "RTX 5060 Ti",
+      "architecture": "x86_64",
+      "nvidia_pytorch_release": "26.05",
+      "container_image_id": "sha256:65a30dbce6ae43e76d6e417ab82946b4c6c5fc0c8727cc6f346defc8d7c21d01",
+      "python": "3.12.3",
+      "pytorch": "2.12.0a0+5aff3928d8.nv26.05",
+      "cuda_toolkit": "13.2.1.009",
+      "pytorch_cuda": "13.2",
+      "cudnn_package": "9.22.0.52",
+      "cudnn_runtime": 92200,
+      "opencv": "4.15.0-dev",
+      "opencv_cuda_architectures": [
+        "120"
+      ],
+      "pycolmap": "3.13.0",
+      "power_setting": "180 W",
+      "cpu_governor": "performance",
+      "clock_setting": "Persistence mode enabled; no additional GPU clock lock"
+    },
+    {
+      "platform": "Jetson AGX Thor",
+      "architecture": "aarch64",
+      "nvidia_pytorch_release": "26.05",
+      "container_image_id": "sha256:b3c078e453943d87e12faa11e752bfe5d47e336657d78a951efab842868f0f04",
+      "python": "3.12.3",
+      "pytorch": "2.12.0a0+5aff3928d8.nv26.05",
+      "cuda_toolkit": "13.2.1.009",
+      "pytorch_cuda": "13.2",
+      "cudnn_package": "9.22.0.52",
+      "cudnn_runtime": 92200,
+      "opencv": "4.15.0-dev",
+      "opencv_cuda_architectures": [
+        "110"
+      ],
+      "pycolmap": "3.13.0",
+      "power_setting": "MAXN",
+      "cpu_governor": null,
+      "clock_setting": "No additional clock lock"
+    },
+    {
+      "platform": "Jetson Orin Nano",
+      "architecture": "aarch64",
+      "nvidia_pytorch_release": "26.05",
+      "container_image_id": "sha256:1229c3f9b9449364ed53ac3d35ac8d6c96386fac9c0da8f636a2024f983a1322",
+      "python": "3.12.3",
+      "pytorch": "2.12.0a0+5aff3928d8.nv26.05",
+      "cuda_toolkit": "13.2.1.009",
+      "pytorch_cuda": "13.2",
+      "cudnn_package": "9.22.0.52",
+      "cudnn_runtime": 92200,
+      "opencv": "4.15.0-dev",
+      "opencv_cuda_architectures": [
+        "87"
+      ],
+      "pycolmap": "3.13.0",
+      "power_setting": "MAXN_SUPER",
+      "cpu_governor": null,
+      "clock_setting": "No additional clock lock"
+    }
+  ],
+  "common": {
+    "numpy": "2.4.2",
+    "pillow": "12.2.0",
+    "tf32": false,
+    "matcher_seed": 42,
+    "fp32": "FP32 weights and inputs; autocast disabled",
+    "mp": "FP32 weights with FP16 autocast",
+    "fp16": "FP16 weights and inputs; autocast disabled in the common runner"
+  },
+  "pose_evaluation": {
+    "platform": "RTX 5070 Ti",
+    "opencv": "4.15.0-dev",
+    "numpy": "2.4.2",
+    "python": "3.12.3",
+    "reference": {
+      "repository": "https://github.com/magicleap/SuperGluePretrainedNetwork",
+      "commit": "ddcf11f42e7e0732a0c4607648f9448ea8d73590",
+      "utils_sha256": "6563520230a07e62a3332e7b3aba605caa238383b6d38a03bec88ec6b13f5b60"
+    },
+    "rng_seed": "int(sha256(pair_uid.encode()).hexdigest()[:8], 16) & 0x7FFFFFFF"
+  },
+  "measurements": {
+    "idle_seconds": 3,
+    "initial_warmup_calls": 10,
+    "coverage_warmup_passes": 2,
+    "coverage_pairs": 16,
+    "runtime_repeats_per_pair": 3,
+    "pairs_per_task": 4,
+    "power_minimum_seconds": 6,
+    "power_minimum_calls": 5,
+    "power_target_interval_ms": 100,
+    "runtime_container": "Separate from memory and energy",
+    "energy_cupti_enabled": false
+  },
+  "container_note": "Image IDs identify the experiment builds; this download does not contain container images.",
+  "inputs": {
+    "accuracy_visible_sthereo": "BGGR Bayer demosaiced to RGB",
+    "resource_visible_sthereo": "Original single-channel Bayer images",
+    "rubik": "Original RGB",
+    "thermal": "Shared fixed percentile clipping and conversion to 8-bit"
+  }
+}
