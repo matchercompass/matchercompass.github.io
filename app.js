@@ -65,16 +65,18 @@ function layoutTiles(mode,animate=false,origins=null){
  board.style.width=compact?Math.max(board.parentElement.clientWidth,methods.length*190)+'px':'100%';
  const width=board.clientWidth, rows=currentRows(), eligible=feasible();
  const positions=new Map(), groups=methods.map(m=>eligible.filter(x=>x.method===m.id)), tags=recommendations(eligible);
- const gap=compact?7:10;
- const tile=compact?36:Math.max(34,Math.min(56,Math.floor((width-236)/15)));
+ const gap=compact?7:8;
+ const boardTop=board.getBoundingClientRect().top+window.scrollY;
+ const rowFit=Math.floor((innerHeight-boardTop-86)/methods.length)-6;
+ const tile=compact?32:Math.max(28,Math.min(innerHeight<820?32:40,Math.floor((width-236)/15),mode==='rows'&&innerWidth>740?rowFit:40));
  const pitch=tile+gap;
  function label(text,x,y,cls,width){const e=document.createElement('div');e.className=cls;e.style.left=x+'px';e.style.top=y+'px';if(width)e.style.width=width+'px';e.innerHTML=text;labels.append(e);}
  if(mode==='rows'){
-  const labelWidth=width>1100?230:190, columnWidth=(width-labelWidth-8)/4, top=62, rowHeight=tile+12;
+  const labelWidth=width>1100?230:190, columnWidth=(width-labelWidth-8)/4, top=48, rowHeight=tile+6;
   [128,256,512,1024].forEach((res,ri)=>{
    const left=labelWidth+ri*columnWidth+(columnWidth-3*pitch+gap)/2;
    label(res+' px',left,0,'resolution-heading',3*pitch-gap);
-   ['FP32','MP','FP16'].forEach((p,pi)=>label(p,left+pi*pitch,28,'precision-heading',tile));
+   ['FP32','MP','FP16'].forEach((p,pi)=>label(p,left+pi*pitch,24,'precision-heading',tile));
   });
   methods.forEach((m,mi)=>{
    const y=top+mi*rowHeight;
@@ -95,8 +97,8 @@ function layoutTiles(mode,animate=false,origins=null){
     const group=groups[mi];group.sort(state.sort==='accuracy'?(a,b)=>b.auc[angleIndex()]-a.auc[angleIndex()]:state.sort==='runtime'?(a,b)=>a.runtime-b.runtime:order);
     const left=col*cellWidth+(compact?8:Math.max(12,(cellWidth-perRow*pitch+gap)/2));
     label(m.name+`<small>${group.length} configurations</small>`,left,top,'group-label'+(!group.length?' no-results':''),cellWidth-18);
-    group.forEach((x,i)=>positions.set(id(x),{x:left+(i%perRow)*pitch,y:top+48+Math.floor(i/perRow)*pitch}));
-    rowHeight=Math.max(rowHeight,48+Math.ceil(group.length/perRow)*pitch+24);
+    group.forEach((x,i)=>positions.set(id(x),{x:left+(i%perRow)*pitch,y:top+42+Math.floor(i/perRow)*pitch}));
+    rowHeight=Math.max(rowHeight,42+Math.ceil(group.length/perRow)*pitch+18);
    }
    top+=rowHeight;
   }
@@ -246,5 +248,6 @@ $('#close-dialog').onclick=()=>$('#paper-dialog').close();$('#close-pair').oncli
 $('#restart').onclick=reset;$('#relax').onclick=()=>go(2);$('#all-configs').onclick=collapseSelection;
 let resizeFrame,observedBoardWidth=0;new ResizeObserver(()=>{const width=$('#board').clientWidth;if(width===observedBoardWidth)return;observedBoardWidth=width;cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>layoutTiles(galleryOpen||state.step===5?'groups':'rows'));}).observe($('#board'));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&galleryOpen&&!document.querySelector('dialog[open]'))collapseSelection();});
+window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>layoutTiles(galleryOpen||state.step===5?'groups':'rows'));});
 window.demoState=()=>({...state,feasible:feasible().length});
 reset();

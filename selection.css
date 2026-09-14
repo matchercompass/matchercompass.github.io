@@ -14,3 +14,19 @@
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 .selection-summary button{font:inherit;color:inherit;padding:0;border:0;background:none}.selection-summary button:hover{color:var(--ink);text-decoration:underline;text-underline-offset:3px}.selection-summary button:focus-visible{outline-offset:3px}
+
+/* Fit the configuration overview to laptop-height viewports without scaling text. */
+@media(min-width:741px){
+ header{height:46px}.project-heading{padding:12px 0 14px}.project-heading h1{font-size:23px}.project-heading p{font-size:13px}.steps{padding-top:12px}
+ .question{min-height:154px;padding:14px 0 17px;gap:14px}.question-title h2{font-size:24px}.question-title p{font-size:13px;margin-top:5px}
+ .option{padding:12px 14px;min-height:62px}.option strong{font-size:15px}.option small{font-size:12px}.actions{padding-bottom:9px}
+ .selection-summary{margin:10px 0;min-height:18px}.canvas-head{min-height:30px;margin-bottom:8px}.canvas-head h2{font-size:18px}.count strong{font-size:22px}
+ .matrix-label{font-size:14px}.matrix-label small{display:inline;font-size:11px;margin-left:7px}.group-label{font-size:14px}.resolution-heading{font-size:13px}
+ .board-foot{margin:5px 0 12px}.board-scroll{padding-top:3px;padding-bottom:5px}body[data-step="5"] .question{min-height:78px;padding:11px 0}
+}
+
+@media(min-width:741px) and (max-height:820px){
+ header{height:42px}.project-heading{padding:8px 0 10px}.steps{padding-top:8px}
+ .question{min-height:138px;padding:10px 0 12px;gap:10px}.option{min-height:56px;padding:10px 14px}
+ .selection-summary{margin:8px 0}.canvas-head{margin-bottom:4px}
+}
