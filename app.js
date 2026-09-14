@@ -57,25 +57,26 @@ function layoutTiles(mode,animate=false){
  const origins=new Map([...nodes].map(([key,b])=>[key,{rect:b.getBoundingClientRect(),present:b.dataset.present!=='false'}]));
  activeAnimations.forEach(a=>a.cancel());activeAnimations=[];
  boardMode=mode;board.className='board '+(mode==='groups'?'results':'matrix');
- const width=board.clientWidth, tile=32, gap=6, pitch=tile+gap;
+ const width=board.clientWidth, wide=window.innerWidth>=1500, tile=wide?42:32, gap=wide?9:6, pitch=tile+gap;
+ board.style.height=(wide?566:486)+'px';
  const labels=board.querySelector('.board-labels');labels.replaceChildren();
  const positions=new Map(), rows=currentRows(), eligible=feasible();
  const groups=methods.map(m=>eligible.filter(x=>x.method===m.id));
  const tags=recommendations(eligible),ai=angleIndex();
  function label(text,x,y,cls='matrix-label',extra=''){
-  const e=document.createElement('div');e.className=cls;e.style.left=x+'px';e.style.top=y+'px';
+  const e=document.createElement('div');e.className=cls;if(cls==='precision-heading')e.style.width=tile+'px';if(cls==='resolution-heading')e.style.width=(3*pitch-gap)+'px';e.style.left=x+'px';e.style.top=y+'px';
   e.innerHTML=text+extra;labels.append(e);return e;
  }
  if(mode==='rows'){
-  const labelWidth=174, extraGap=12, matrixWidth=labelWidth+12*pitch-gap+3*extraGap;
-  const origin=Math.max(8,(width-matrixWidth)/2), top=62;
+  const labelWidth=wide?245:174, extraGap=wide?20:12, matrixWidth=labelWidth+12*pitch-gap+3*extraGap;
+  const origin=Math.max(8,(width-matrixWidth)/2), top=wide?68:62;
   [128,256,512,1024].forEach((res,ri)=>{
    const x=origin+labelWidth+ri*(3*pitch+extraGap);
    label(res+' px',x,9,'resolution-heading');
    ['FP32','MP','FP16'].forEach((p,pi)=>label(p,x+pi*pitch,31,'precision-heading'));
   });
   methods.forEach((m,mi)=>{
-   const y=top+mi*44;
+   const y=top+mi*(wide?53:44);
    label(m.name,origin,y+8,'matrix-label',mi<2?'<small>Native</small>':'');
    base.filter(x=>x.method===m.id).forEach(x=>{
     const ri=[128,256,512,1024].indexOf(x.res),pi=x.precision==='native'?1:['fp32','mp','fp16'].indexOf(x.precision);
@@ -87,9 +88,9 @@ function layoutTiles(mode,animate=false){
   methods.forEach((m,mi)=>{
    const group=groups[mi];
    group.sort(state.sort==='accuracy'?(a,b)=>b.auc[ai]-a.auc[ai]:state.sort==='runtime'?(a,b)=>a.runtime-b.runtime:order);
-   const left=mi%columns*cellWidth+Math.max(12,(cellWidth-4*pitch+gap)/2),top=22+Math.floor(mi/columns)*154;
+   const left=mi%columns*cellWidth+Math.max(12,(cellWidth-4*pitch+gap)/2),top=22+Math.floor(mi/columns)*(wide?184:154);
    label(m.name,left,top,'group-label'+(group.length?'':' no-results'),`<small>${group.length} ${group.length===1?'configuration':'configurations'}</small>`);
-   group.forEach((x,i)=>positions.set(id(x),{x:left+(i%4)*pitch,y:top+44+Math.floor(i/4)*pitch,present:true}));
+   group.forEach((x,i)=>positions.set(id(x),{x:left+(i%4)*pitch,y:top+(wide?49:44)+Math.floor(i/4)*pitch,present:true}));
   });
  }
  const box=board.getBoundingClientRect(),reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -133,9 +134,10 @@ function renderQuestion(){
  if(s===4){h='Pose accuracy';desc='Choose the angle used for AUC and success rate.';opts=`<div class="button-grid">${[5,10,20].map(x=>option(x,`${x}°`,'',state.angle)).join('')}</div>`;hint='';}
  if(s<5){$('#question').innerHTML=`<h2>${h}</h2>${desc?`<p class="description">${desc}</p>`:""}${opts}${hint?`<p class="hint">${hint}</p>`:''}<div class="actions">${s?'<button class="back" id="back" aria-label="Previous step">←</button>':''}<button class="primary" id="next">${s===4?'Show results':'Continue'} <span>→</span></button></div>`;
  $('#question').querySelectorAll('[data-value]').forEach(b=>b.onclick=()=>{choose(b.dataset.value);});$('#next').onclick=()=>{go(state.step+1);};if($('#back'))$('#back').onclick=()=>{go(state.step-1);};
- }else{const rows=feasible();$('#question').innerHTML=`<h2>Compare results</h2><p class="result-summary"><strong>${new Set(rows.map(x=>x.method)).size} matchers</strong> meet your limits.</p><label class="sort-label" for="sort">Sort within each matcher</label><select id="sort"><option value="method">Resolution, then precision</option><option value="accuracy">Pose AUC, highest first</option><option value="runtime">Runtime, lowest first</option></select><div class="actions"><button class="primary" id="edit">Change limits</button></div>`;$('#question').insertAdjacentHTML('beforeend',`<details class="more-filters"><summary>Resolution, precision & energy</summary><label>Resolution<select id="res-filter"><option value="">All resolutions</option>${[128,256,512,1024].map(r=>`<option value="${r}">${r} px</option>`).join('')}</select></label><label>Precision<select id="precision-filter"><option value="">All supported modes</option>${['native','fp32','mp','fp16'].map(v=>`<option value="${v}">${v.toUpperCase()}</option>`).join('')}</select></label><label>Energy limit (J per pair)<input id="energy-filter" type="number" min="0" step="0.1" placeholder="No limit"></label><button id="apply-filters" class="text-button">Apply filters</button><p class="hint">Energy measurement scope varies by platform. <a href="measurement.html#energy">Measurement details</a></p></details>`);
+ }else{const rows=feasible();$('#question').innerHTML=`<h2>Compare results</h2><p class="result-summary"><strong>${new Set(rows.map(x=>x.method)).size} matchers</strong> meet your limits.</p><p class="budget-label">Runtime limit</p><div class="quick-budgets">${[20,50,100,null].map(v=>`<button type="button" data-budget="${v}" class="${state.budget===v?'chosen':''}" aria-pressed="${state.budget===v}">${v===null?'No limit':v+' ms'}</button>`).join('')}</div><label class="sort-label" for="sort">Sort within each matcher</label><select id="sort"><option value="method">Resolution, then precision</option><option value="accuracy">Pose AUC, highest first</option><option value="runtime">Runtime, lowest first</option></select><div class="actions"><button class="primary" id="edit">Change limits</button></div>`;$('#question').insertAdjacentHTML('beforeend',`<details class="more-filters"><summary>Resolution, precision & energy</summary><label>Resolution<select id="res-filter"><option value="">All resolutions</option>${[128,256,512,1024].map(r=>`<option value="${r}">${r} px</option>`).join('')}</select></label><label>Precision<select id="precision-filter"><option value="">All supported modes</option>${['native','fp32','mp','fp16'].map(v=>`<option value="${v}">${v.toUpperCase()}</option>`).join('')}</select></label><label>Energy limit (J per pair)<input id="energy-filter" type="number" min="0" step="0.1" placeholder="No limit"></label><button id="apply-filters" class="text-button">Apply filters</button><p class="hint">Energy measurement scope varies by platform. <a href="measurement.html#energy">Measurement details</a></p></details>`);
  $('#res-filter').value=state.resolution??'';$('#precision-filter').value=state.precision??'';$('#energy-filter').value=state.energy??'';
  $('#apply-filters').onclick=()=>{state.resolution=$('#res-filter').value?Number($('#res-filter').value):null;state.precision=$('#precision-filter').value||null;state.energy=$('#energy-filter').value?Math.max(0,Number($('#energy-filter').value)):null;go(5);};
+ $('#question').querySelectorAll('[data-budget]').forEach(b=>b.onclick=()=>{state.budget=b.dataset.budget==='null'?null:Number(b.dataset.budget);go(5);});
  $('#sort').value=state.sort;$('#sort').onchange=e=>{state.sort=e.target.value;renderResults(true);renderSelection();};$('#edit').onclick=()=>go(2);}
 }
 function choose(value){const field=['task','platform','budget','memory','angle'][state.step];state[field]=state.step<2?value:value==='null'?null:Number(value);state.selected=null;renderQuestion();update();}
@@ -161,7 +163,7 @@ function renderSelection(){
  let comparison='';if(x.precision!=='fp32'&&x.precision!=='native'&&fp32?.runtime&&x.runtime!==null){const change=(1-x.runtime/fp32.runtime)*100;comparison=`Against FP32 at the same resolution: runtime ${fmt(Math.abs(change))}% ${change>=0?'lower':'higher'}; pose AUC ${x.auc[ai]-fp32.auc[ai]>=0?'+':''}${fmt(x.auc[ai]-fp32.auc[ai])} pp.`;}
  $('#inspect').hidden=false;$('#inspect').innerHTML=`${why?'<p class="eyebrow">Excluded</p>':''}<h3>${m.name}<br>${x.res} px · ${x.precision.toUpperCase()}</h3><p class="reason">${explanation}</p>${margin?`<p>${margin}</p>`:""}<div class="metrics"><div>Runtime · ms<strong>${fmt(x.runtime)}</strong></div><div>GPU memory · GiB<strong>${fmt(x.memory,2)}</strong></div><div>Pose AUC @ ${state.angle}°<strong>${fmt(x.auc[ai])}%</strong></div><div>Energy per pair · J<strong>${fmt(x.energy,2)}</strong></div></div><p>${x.successes[ai]} / ${x.total} pairs within ${state.angle}° · ${fmt(100*x.successes[ai]/x.total)}% success.</p>${comparison?`<p>${comparison}</p>`:""}<button class="small-link" id="show-cases">View all 100 image pairs →</button>`;
 }
-function go(step){const previous=state.step;state.step=step;state.selected=null;$('#case-section').hidden=true;if(step<5&&previous===5)renderGrid(true);renderSteps();renderQuestion();if(step===5){renderResults(previous!==5);const rows=feasible(),tags=recommendations(rows);const winner=rows.find(x=>tags.get(id(x))?.includes('Highest pose AUC'));state.selected=winner?id(winner):null;}update();}
+function go(step){const previous=state.step;state.step=step;document.body.dataset.step=String(step);state.selected=null;$('#case-section').hidden=true;if(step<5&&previous===5)renderGrid(true);renderSteps();renderQuestion();if(step===5){renderResults(previous!==5);const rows=feasible(),tags=recommendations(rows);const winner=rows.find(x=>tags.get(id(x))?.includes('Highest pose AUC'));state.selected=winner?id(winner):null;}update();}
 function reset(){state={step:0,task:tasks[0][0],platform:'thor',budget:50,memory:null,energy:null,resolution:null,precision:null,angle:10,sort:'method',selected:null};renderGrid();go(0);}
 function openEvidence(type){const task=tasks.find(x=>x[0]===state.task);$('#paper-ref').textContent=type==='figure4'?'FIGURE 4':'TABLE V';$('#paper-title').textContent=type==='figure4'?'Accuracy across resolutions and hardware':'Accuracy and runtime across precisions';$('#paper-image').src=`assets/${type}.png`;$('#paper-context').textContent=type==='figure4'?`Fig. 4(a): accuracy across four visual conditions and resolutions, FP32/Native. Fig. 4(b): hardware comparison on RUBIK at 256 and 512 px, FP32/Native. Current selection: ${task[1]}, ${task[2]}.`:`Table V compares precisions on RUBIK at 512 px. The current results use ${task[1]}, ${task[2]}, and are separate from the fixed RUBIK / 512 px table.`;$('#paper-dialog').showModal();}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-evidence]');if(b)openEvidence(b.dataset.evidence);});$('#close-dialog').onclick=()=>$('#paper-dialog').close();$('#paper-dialog').addEventListener('click',e=>{if(e.target===$('#paper-dialog'))$('#paper-dialog').close();});$('#restart').onclick=()=>{reset();};$('#relax').onclick=()=>go(2);
@@ -186,10 +188,10 @@ function renderCases(){
  const success=caseResults.filter(passes).length,method=methods.find(m=>m.id===x.method).name;
  $('#case-title').textContent=`${method} · ${x.res} px · ${x.precision.toUpperCase()}`;
  $('#case-summary').textContent=`${success} / ${caseResults.length} successful pairs (${fmt(100*success/caseResults.length)}%) at ${x.angle}°. Success: pose error ≤ ${x.angle}°.`;
- casePage=Math.min(casePage,Math.max(0,Math.ceil(records.length/12)-1));
- $('#case-grid').innerHTML=records.slice(casePage*12,(casePage+1)*12).map(r=>`<article class="case-card"><img src="assets/pairs/${r.pair}.webp" loading="lazy" alt="Evaluated input image pair"><div><strong class="${passes(r)?'success':'failure'}">${passes(r)?'Success':'Failure'}</strong><span>Pose error: ${r.error===null?'not estimated':fmt(r.error,2)+'°'}</span><span>${r.matches.toLocaleString()} returned correspondences</span><small title="${r.pair}">Pair ${r.pair.slice(-12)}</small></div></article>`).join('')||'<p>No pairs in this category.</p>';
- $('#case-page').textContent=`${records.length?casePage*12+1:0}–${Math.min((casePage+1)*12,records.length)} / ${records.length} pairs`;
- $('#case-prev').disabled=casePage===0;$('#case-next').disabled=(casePage+1)*12>=records.length;
+ casePage=Math.min(casePage,Math.max(0,Math.ceil(records.length/6)-1));
+ $('#case-grid').innerHTML=records.slice(casePage*6,(casePage+1)*6).map(r=>`<article class="case-card"><img src="assets/pairs/${r.pair}.webp" loading="lazy" alt="Evaluated input image pair"><div><strong class="${passes(r)?'success':'failure'}">${passes(r)?'Success':'Failure'}</strong><span>Pose error: ${r.error===null?'not estimated':fmt(r.error,2)+'°'}</span><span>${r.matches.toLocaleString()} returned correspondences</span><small title="${r.pair}">Pair ${r.pair.slice(-12)}</small></div></article>`).join('')||'<p>No pairs in this category.</p>';
+ $('#case-page').textContent=`${records.length?casePage*6+1:0}–${Math.min((casePage+1)*6,records.length)} / ${records.length} pairs`;
+ $('#case-prev').disabled=casePage===0;$('#case-next').disabled=(casePage+1)*6>=records.length;
 }
 document.addEventListener('click',e=>{if(e.target.closest('#show-cases'))loadCases();});
 $('#case-filter').onchange=()=>{casePage=0;renderCases();};$('#case-prev').onclick=()=>{casePage--;renderCases();};$('#case-next').onclick=()=>{casePage++;renderCases();};
