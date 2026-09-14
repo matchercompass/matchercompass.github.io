@@ -37,3 +37,6 @@ html{scrollbar-gutter:stable}
 @media(max-width:900px){.case-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:480px){.case-grid{grid-template-columns:1fr}}
 /* Avoid scroll-anchor jumps when a step replaces the active panel. */
 html{overflow-anchor:none}
+
+.primary:disabled{background:#dfe5df;color:#7c887c;cursor:default}.primary:disabled:hover{background:#dfe5df}
+@media(min-width:1500px){.selection-summary{min-height:35px}}
