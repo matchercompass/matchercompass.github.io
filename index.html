@@ -1,22 +1,21 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>MatcherCompass · Configuration selection</title><link rel="canonical" href="https://matchercompass.github.io/"><link rel="stylesheet" href="selection.css"><script defer src="data.js"></script><script defer src="app.js"></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>MatcherCompass · Configuration selection</title><link rel="canonical" href="https://matchercompass.github.io/"><link rel="stylesheet" href="selection.css"><script defer src="data.js"></script><script defer src="vendor/motion.js"></script><script defer src="app.js"></script></head>
 <body>
 <header><a class="brand" href="./">Matcher<span>Compass</span></a><div class="header-right"><button class="text-button" id="restart">Start over</button></div></header>
 <main>
-<section class="project-heading"><h1>MatcherCompass</h1><p>A Deployment-Aware Benchmark to Guide Image Matcher Selection in the Wild</p><nav><a href="#downloads">Data</a><a href="measurement.html">Measurement details</a></nav></section>
+<section class="project-heading"><h1>Matcher selection</h1><p>A Deployment-Aware Benchmark to Guide Image Matcher Selection in the Wild</p><nav><a href="#downloads">Data</a><a href="measurement.html">Measurement details</a></nav></section>
 <nav class="steps" aria-label="Selection steps" id="steps"></nav>
 <section class="question" id="question" aria-label="Selection controls"></section>
 <div class="selection-summary" id="summary"></div>
 <div class="workspace" id="workspace">
 <section id="case-section" class="case-section" hidden aria-label="Image pair results">
-<div id="inspect" class="inspect" hidden></div>
+<div id="selection-card" class="selection-card"><button class="text-button close-selection" id="all-configs" hidden>← All configurations</button><div id="inspect" class="inspect" hidden></div></div>
 <div id="case-status" role="status"></div>
 <div id="case-grid" class="case-columns"></div>
 </section>
 <section class="canvas" aria-label="Matching configurations">
 <div class="canvas-head"><h2 id="board-title">Configurations</h2><div class="count"><strong id="count">84</strong><span id="count-label">evaluated</span></div></div>
-<button class="text-button all-configs" id="all-configs" hidden>← All configurations</button>
 <div class="board-scroll"><div class="board" id="board"></div></div>
 <div class="board-foot"><span><i class="legend-on"></i>Available</span><span><i class="legend-off"></i>Excluded</span><span><i class="legend-rec"></i>Highest pose AUC</span></div>
 <div class="empty" id="empty" hidden><h3>No configurations meet these limits.</h3><button class="primary" id="relax">Edit limits</button></div>

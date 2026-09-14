@@ -20,6 +20,10 @@ let caseResults=[], caseToken=0, caseContext=null;
 const caseCache=new Map();
 let shown={success:12,failure:12};
 let galleryOpen=false;
+let transitionToken=0;
+let motionControls=[];
+const reducedMotion=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+const previewCount=()=>innerWidth>=1100?8:innerWidth>=740?6:4;
 const nodes=new Map();
 const fmt=(x,n=1)=>x==null?'—':x.toFixed(n);
 const escapeText=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -50,17 +54,19 @@ function makeTile(x){
  b.addEventListener('click',()=>selectConfiguration(id(x))); nodes.set(id(x),b); return b;
 }
 base.forEach(makeTile);
-function layoutTiles(mode,animate=false){
- const board=$('#board'), previous=new Map([...nodes].map(([key,b])=>[key,b.getBoundingClientRect()]));
+function layoutTiles(mode,animate=false,origins=null){
+ const board=$('#board'), previous=origins||new Map([...nodes].map(([key,b])=>[key,b.getBoundingClientRect()]));
  board.className='board '+mode;
  if(!board.querySelector('.board-labels')){
   const labels=document.createElement('div');labels.className='board-labels';board.replaceChildren(labels,...nodes.values());
  }
  const labels=board.querySelector('.board-labels');labels.replaceChildren();
- const width=board.clientWidth, compact=galleryOpen, rows=currentRows(), eligible=feasible();
+ const compact=galleryOpen;
+ board.style.width=compact?Math.max(board.parentElement.clientWidth,methods.length*190)+'px':'100%';
+ const width=board.clientWidth, rows=currentRows(), eligible=feasible();
  const positions=new Map(), groups=methods.map(m=>eligible.filter(x=>x.method===m.id)), tags=recommendations(eligible);
  const gap=compact?7:10;
- const tile=compact?Math.min(44,Math.floor((width-38)/4)):Math.max(34,Math.min(56,Math.floor((width-236)/15)));
+ const tile=compact?36:Math.max(34,Math.min(56,Math.floor((width-236)/15)));
  const pitch=tile+gap;
  function label(text,x,y,cls,width){const e=document.createElement('div');e.className=cls;e.style.left=x+'px';e.style.top=y+'px';if(width)e.style.width=width+'px';e.innerHTML=text;labels.append(e);}
  if(mode==='rows'){
@@ -80,14 +86,14 @@ function layoutTiles(mode,animate=false){
   });
   board.style.height=(top+methods.length*rowHeight)+'px';
  }else{
-  const columns=compact?1:(width<680?2:3), cellWidth=width/columns, perRow=compact?4:Math.min(6,Math.max(2,Math.floor((cellWidth-24+gap)/pitch)));
+  const columns=compact?methods.length:(width<680?2:3), cellWidth=width/columns, perRow=compact?4:Math.min(6,Math.max(2,Math.floor((cellWidth-24+gap)/pitch)));
   let top=6;
   for(let row=0;row<Math.ceil(methods.length/columns);row++){
    let rowHeight=70;
    for(let col=0;col<columns;col++){
     const mi=row*columns+col, m=methods[mi];if(!m)continue;
     const group=groups[mi];group.sort(state.sort==='accuracy'?(a,b)=>b.auc[angleIndex()]-a.auc[angleIndex()]:state.sort==='runtime'?(a,b)=>a.runtime-b.runtime:order);
-    const left=col*cellWidth+(compact?5:Math.max(12,(cellWidth-perRow*pitch+gap)/2));
+    const left=col*cellWidth+(compact?8:Math.max(12,(cellWidth-perRow*pitch+gap)/2));
     label(m.name+`<small>${group.length} configurations</small>`,left,top,'group-label'+(!group.length?' no-results':''),cellWidth-18);
     group.forEach((x,i)=>positions.set(id(x),{x:left+(i%perRow)*pitch,y:top+48+Math.floor(i/perRow)*pitch}));
     rowHeight=Math.max(rowHeight,48+Math.ceil(group.length/perRow)*pitch+24);
@@ -111,39 +117,101 @@ function option(value,label,sub,current){return `<button type="button" class="op
 function renderQuestion(){
  const s=state.step;
  if(s<5){
-  const headings=['Visual condition','Hardware platform','Time budget','GPU memory limit','Pose accuracy'];
-  const descriptions=['','','Median matching time per pair; model loading and pose estimation excluded.','Peak allocated memory, including the model.','Angle threshold for pose AUC and success rate.'];
+  const headings=['Which images will you match?','Which hardware will run the matcher?','What is your matching time budget?','Do you have a GPU memory limit?','Which pose error is acceptable?'];
+  const descriptions=['Choose the closest evaluated condition.','','Median time per pair, excluding model loading and pose estimation.','Optional. Includes the model and matching allocations.','The threshold used to report pose AUC and successful pairs.'];
   let options;
-  if(s<2)options=(s===0?tasks:platforms).map(x=>option(x[0],x[1],x[2],isChosen(s)?state[s===0?'task':'platform']:undefined)).join('');
-  else {const choices=s===2?[10,20,50,100,null]:s===3?[0.5,1,2,null]:[5,10,20];const field=['','','budget','memory','angle'][s];options=choices.map(x=>option(x,x===null?'No limit':s===2?`${x} ms`:s===3?`${x} GiB`:`${x}°`,'',isChosen(s)?state[field]:undefined)).join('');}
-  $('#question').innerHTML=`<div class="question-title"><h2>${headings[s]}</h2>${descriptions[s]?`<p>${descriptions[s]}</p>`:''}</div><div class="options">${options}</div><div class="actions">${s?'<button class="back" id="back" aria-label="Previous step">←</button>':''}<button class="primary" id="next" ${isChosen(s)?'':'disabled'}>${s===4?'Show results':'Continue'} →</button></div>`;
+  if(s===0){const labels=[['Visible–Visible','Viewpoint variation · RUBIK'],['Visible–Visible','Day–night · STheReO'],['Visible–Thermal','Daytime · STheReO'],['Thermal–Thermal','Day–night · STheReO']];options=tasks.map((x,i)=>option(x[0],labels[i][0],labels[i][1],isChosen(0)?state.task:undefined)).join('');}
+  if(s===1)options=platforms.map(x=>option(x[0],x[1],x[2],isChosen(1)?state.platform:undefined)).join('');
+  if(s>=2){const choices=s===2?[10,20,50,100,null]:s===3?[0.5,1,2,null]:[5,10,20];const field=['','','budget','memory','angle'][s];options=choices.map(x=>option(x,x===null?'No limit':s===2?`${x} ms`:s===3?`${x} GiB`:`${x}°`,'',isChosen(s)?state[field]:undefined)).join('');}
+  $('#question').innerHTML=`<div class="question-title"><h2>${headings[s]}</h2>${descriptions[s]?`<p>${descriptions[s]}</p>`:''}</div><div class="options">${options}</div><div class="actions">${s?'<button class="back" id="back" aria-label="Previous step">← Back</button>':''}<button class="primary" id="next" ${isChosen(s)?'':'disabled'}>${s===4?'Show results':'Continue'} →</button></div>`;
   $('#question').querySelectorAll('[data-value]').forEach(b=>b.onclick=()=>choose(b.dataset.value));$('#next').onclick=()=>go(s+1);if($('#back'))$('#back').onclick=()=>go(s-1);
  }else{
-  $('#question').innerHTML=`<div class="result-controls"><div><label>Time budget</label><div class="quick-budgets">${[20,50,100,null].map(v=>`<button type="button" data-budget="${v}" class="${state.budget===v?'chosen':''}" aria-pressed="${state.budget===v}">${v===null?'No limit':v+' ms'}</button>`).join('')}</div></div><label>Sort within matcher<select id="sort"><option value="method">Resolution · precision</option><option value="accuracy">Highest pose AUC</option><option value="runtime">Lowest runtime</option></select></label><button class="text-button" id="edit">Change requirements</button><details class="more-filters"><summary>More filters</summary><div class="filter-fields"><label>Resolution<select id="res-filter"><option value="">All resolutions</option>${[128,256,512,1024].map(r=>`<option value="${r}">${r} px</option>`).join('')}</select></label><label>Precision<select id="precision-filter"><option value="">All supported modes</option>${['native','fp32','mp','fp16'].map(v=>`<option value="${v}">${v.toUpperCase()}</option>`).join('')}</select></label><label>Energy limit · J / pair<input id="energy-filter" type="number" min="0" step="0.1" placeholder="No limit"></label><button id="apply-filters" class="primary">Apply</button><a href="measurement.html#energy">Power measurement scope</a></div></details></div>`;
+  $('#question').innerHTML=`<div class="result-controls"><div><label>Time budget</label><div class="quick-budgets">${[20,50,100,null].map(v=>`<button type="button" data-budget="${v}" class="${state.budget===v?'chosen':''}" aria-pressed="${state.budget===v}">${v===null?'No limit':v+' ms'}</button>`).join('')}</div></div><label>Pose threshold<select id="angle-filter">${[5,10,20].map(v=>`<option value="${v}">${v}°</option>`).join('')}</select></label><label>Sort within matcher<select id="sort"><option value="method">Resolution · precision</option><option value="accuracy">Highest pose AUC</option><option value="runtime">Lowest runtime</option></select></label><button class="text-button" id="edit">Change requirements</button><details class="more-filters"><summary>More filters</summary><div class="filter-fields"><label>Resolution<select id="res-filter"><option value="">All resolutions</option>${[128,256,512,1024].map(r=>`<option value="${r}">${r} px</option>`).join('')}</select></label><label>Precision<select id="precision-filter"><option value="">All supported modes</option>${['native','fp32','mp','fp16'].map(v=>`<option value="${v}">${v.toUpperCase()}</option>`).join('')}</select></label><label>Energy limit · J / pair<input id="energy-filter" type="number" min="0" step="0.1" placeholder="No limit"></label><button id="apply-filters" class="primary">Apply</button><a href="measurement.html#energy">Power measurement scope</a></div></details></div>`;
   $('#res-filter').value=state.resolution??'';$('#precision-filter').value=state.precision??'';$('#energy-filter').value=state.energy??'';
   $('#apply-filters').onclick=()=>{const input=$('#energy-filter');if(!input.reportValidity())return;state.resolution=Number($('#res-filter').value)||null;state.precision=$('#precision-filter').value||null;state.energy=input.value===''?null:Number(input.value);go(5);};
   $('#question').querySelectorAll('[data-budget]').forEach(b=>b.onclick=()=>{state.budget=b.dataset.budget==='null'?null:Number(b.dataset.budget);go(5);});
+  $('#angle-filter').value=state.angle;$('#angle-filter').onchange=e=>{state.angle=Number(e.target.value);update();if(galleryOpen){renderSelection();caseContext.angle=state.angle;renderCases();}layoutTiles('groups');};
   $('#sort').value=state.sort;$('#sort').onchange=e=>{state.sort=e.target.value;layoutTiles('groups',true);};$('#edit').onclick=()=>go(0);
  }
 }
 function choose(value){if(galleryOpen){closeGallery();layoutTiles('rows');}if(!state.chosenSteps.includes(state.step))state.chosenSteps.push(state.step);const field=['task','platform','budget','memory','angle'][state.step];state[field]=state.step<2?value:value==='null'?null:Number(value);renderQuestion();update();}
-function renderSteps(){ $('#steps').innerHTML=titles.map((t,i)=>`<button type="button" class="step ${i===state.step?'current':i<state.step?'done':''}" ${i>state.step?'disabled':''} data-step="${i}" ${i===state.step?'aria-current="step"':''}><span class="num">${i<state.step?'✓':i+1}</span>${t}</button>`).join('');$('#steps').querySelectorAll('button').forEach(b=>b.onclick=()=>go(Number(b.dataset.step)));}
+function renderSteps(){
+ const complete=state.step===5;
+ $('#steps').innerHTML=`<span class="step-position">${complete?'Requirements set':`Step ${state.step+1} of 5`}</span><div class="step-track">${titles.slice(0,5).map((t,i)=>`<button type="button" class="step-segment ${i===state.step?'current':i<state.step?'done':''}" ${i>state.step?'disabled':''} data-step="${i}" aria-label="${t}${i<state.step?', completed':''}" ${i===state.step?'aria-current="step"':''} title="${t}"></button>`).join('')}</div>`;
+ $('#steps').querySelectorAll('button').forEach(b=>b.onclick=()=>go(Number(b.dataset.step)));
+}
+
 function update(){
  const valid=feasible(),tags=state.step===5?recommendations(valid):new Map();
  currentRows().forEach(x=>{const b=nodes.get(id(x)), name=methods.find(m=>m.id===x.method).name; b.classList.toggle('off',!!rejection(x));b.classList.toggle('selected',galleryOpen&&state.selected===id(x));b.classList.toggle('recommended',tags.has(id(x)));b.setAttribute('aria-pressed',String(galleryOpen&&state.selected===id(x))); b.setAttribute('aria-label',`${name}, ${x.res}px, ${x.precision}, ${rejection(x)||'Eligible'}`);b.title=`${name} · ${x.res} px · ${x.precision.toUpperCase()}\nPose AUC@${state.angle}° ${fmt(x.auc[angleIndex()])}% · ${fmt(x.runtime)} ms${rejection(x)?'\n'+rejection(x):''}`;});
  $('#count').textContent=valid.length;$('#count-label').textContent=state.step<1?'evaluated':'eligible';
  const task=tasks.find(x=>x[0]===state.task),platform=platforms.find(x=>x[0]===state.platform);
- $('#summary').innerHTML=[isChosen(0)?`${task[1]} · ${task[2]}`:null,state.step>=1&&isChosen(1)?platform[1]:null,state.step>=2&&isChosen(2)?(state.budget===null?'No time limit':`≤ ${state.budget} ms`):null,state.step>=3&&isChosen(3)?(state.memory===null?'No memory limit':`≤ ${state.memory} GiB`):null,state.step>=4&&isChosen(4)?`Pose @ ${state.angle}°`:null,state.resolution?`${state.resolution} px`:null,state.precision?state.precision.toUpperCase():null,state.energy!==null?`≤ ${state.energy} J`:null].filter(Boolean).map(x=>`<span>${x}</span>`).join('');
- $('#board-title').textContent=galleryOpen?'Configurations':state.step===5?'Matching configurations':'Configurations';
+ const answers=[
+  (galleryOpen||isChosen(0))?{text:`${task[1]} · ${task[2]}`,step:0}:null,
+  (galleryOpen||(state.step>=1&&isChosen(1)))?{text:platform[1],step:1}:null,
+  state.step>=2&&isChosen(2)?{text:state.budget===null?'No time limit':`≤ ${state.budget} ms`,step:2}:null,
+  state.step>=3&&isChosen(3)?{text:state.memory===null?'No memory limit':`≤ ${state.memory} GiB`,step:3}:null,
+  (galleryOpen||(state.step>=4&&isChosen(4)))?{text:`Pose @ ${state.angle}°`,step:4}:null
+ ].filter(Boolean);
+ $('#summary').innerHTML=answers.map(a=>`<button type="button" data-edit-step="${a.step}" title="Change ${titles[a.step].toLowerCase()}">${a.text}</button>`).join('')+[state.resolution?`${state.resolution} px`:null,state.precision?state.precision.toUpperCase():null,state.energy!==null?`≤ ${state.energy} J`:null].filter(Boolean).map(x=>`<span>${x}</span>`).join('');
+ $('#summary').querySelectorAll('[data-edit-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.editStep)));
+
+ $('#board-title').textContent=galleryOpen?'Compare another configuration':state.step===5?'Matching configurations':'Configurations';
  $('#evidence').hidden=state.step!==5;$('#announcement').textContent=`${titles[state.step]}, ${valid.length} configurations remaining`;
 }
-function closeGallery(){caseToken++;galleryOpen=false;state.selected=null;caseContext=null;$('#workspace').classList.remove('inspecting');$('#case-section').hidden=true;$('#all-configs').hidden=true;}
-function go(step){if(step>state.step&&!isChosen(state.step))return;closeGallery();state.step=step;document.body.dataset.step=String(step);renderSteps();renderQuestion();layoutTiles(step===5?'groups':'rows',true);update();}
+function closeGallery(){stopTransition();caseToken++;galleryOpen=false;state.selected=null;caseContext=null;$('#workspace').classList.remove('inspecting');$('#case-section').hidden=true;$('#all-configs').hidden=true;}
+function go(step){if(step>state.step&&!isChosen(state.step))return;closeGallery();state.step=step;if((step===3||step===4)&&!isChosen(step))state.chosenSteps.push(step);document.body.dataset.step=String(step);renderSteps();renderQuestion();layoutTiles(step===5?'groups':'rows',true);update();if(!reducedMotion()&&window.Motion)Motion.animate('#question',{opacity:[0,1],y:[8,0]},{duration:.22});}
 function reset(){closeGallery();state={step:0,task:tasks[0][0],platform:'thor',budget:50,memory:null,energy:null,resolution:null,precision:null,angle:10,sort:'method',selected:null,chosenSteps:[]};go(0);}
-function selectConfiguration(key){
- state.selected=key;galleryOpen=true;$('#workspace').classList.add('inspecting');$('#case-section').hidden=false;$('#all-configs').hidden=false;
- layoutTiles('groups');update();renderSelection();loadCases();
+function stopTransition(){
+ transitionToken++;motionControls.forEach(c=>c.stop());motionControls=[];
+ document.querySelectorAll('.tile-transition').forEach(e=>e.remove());
+ $('#selection-card').style.opacity='';$('#case-grid').style.opacity='';$('#inspect').style.opacity='';$('#inspect').style.transform='';
 }
+function morphTile(from,to,color,reverse=false){
+ if(reducedMotion()||!window.Motion||!from.width||!to.width)return Promise.resolve();
+ const ghost=document.createElement('div');ghost.className='tile-transition';ghost.setAttribute('aria-hidden','true');
+ Object.assign(ghost.style,{left:from.left+'px',top:from.top+'px',width:from.width+'px',height:from.height+'px',background:reverse?'#f6f8f4':color,borderRadius:reverse?'10px':'6px'});
+ document.body.append(ghost);
+ const control=Motion.animate(ghost,{left:to.left,top:to.top,width:to.width,height:to.height,backgroundColor:reverse?color:'#f6f8f4',borderRadius:reverse?'6px':'10px'},{duration:.42,ease:[.22,1,.36,1]});
+ motionControls.push(control);return Promise.resolve(control).then(()=>ghost.remove());
+}
+function revealScroll(element){
+ const rect=element.getBoundingClientRect(), current=window.scrollY;
+ const target=rect.top<20||rect.top>innerHeight*.5?Math.max(0,current+rect.top-24):current;
+ if(target!==current){
+  if(window.Motion&&!reducedMotion()){const c=Motion.animate(current,target,{duration:.42,ease:[.22,1,.36,1],onUpdate:y=>window.scrollTo({top:y,behavior:'instant'})});motionControls.push(c);}
+  else window.scrollTo({top:target,behavior:'instant'});
+ }
+ return target-current;
+}
+async function selectConfiguration(key){
+ stopTransition();const token=transitionToken;
+ const from=nodes.get(key).getBoundingClientRect();
+ const origins=new Map([...nodes].map(([k,b])=>[k,b.getBoundingClientRect()]));
+ state.selected=key;galleryOpen=true;$('#workspace').classList.add('inspecting');$('#case-section').hidden=false;$('#all-configs').hidden=false;
+ const x=currentRows().find(x=>id(x)===key),m=methods.find(m=>m.id===x.method);
+ $('#selection-card').style.setProperty('--selected-color',m.color);
+ renderSelection();const loading=loadCases();layoutTiles('groups',true,origins);update();
+ const card=$('#selection-card'),rect=card.getBoundingClientRect(),delta=revealScroll(card);
+ const target={left:rect.left,top:rect.top-delta,width:rect.width,height:rect.height};
+ if(!reducedMotion()&&window.Motion)card.style.opacity='0';
+ await morphTile(from,target,m.color);
+ if(token!==transitionToken)return;
+ card.style.opacity='';
+ if(window.Motion&&!reducedMotion()){motionControls.push(Motion.animate('#inspect',{opacity:[0,1],y:[5,0]},{duration:.2}));}
+ $('#all-configs').focus({preventScroll:true});
+ await loading;
+}
+async function collapseSelection(){
+ const key=state.selected;if(!key)return;
+ const origins=new Map([...nodes].map(([k,b])=>[k,b.getBoundingClientRect()]));
+ const from=$('#selection-card').getBoundingClientRect(),color=methods.find(m=>m.id===key.split(':')[0]).color;
+ closeGallery();const token=transitionToken;layoutTiles(state.step===5?'groups':'rows',true,origins);update();
+ const tile=nodes.get(key),rect=tile.getBoundingClientRect(),delta=revealScroll(tile);
+ await morphTile(from,{left:rect.left,top:rect.top-delta,width:rect.width,height:rect.height},color,true);
+ if(token===transitionToken)tile.focus({preventScroll:true});
+}
+
 function renderSelection(){
  const x=currentRows().find(x=>id(x)===state.selected);if(!x)return;
  const m=methods.find(m=>m.id===x.method), ai=angleIndex(),why=rejection(x),tags=recommendations(feasible()).get(id(x));
@@ -151,12 +219,14 @@ function renderSelection(){
 }
 async function loadCases(){
  const x=currentRows().find(x=>id(x)===state.selected);if(!x)return;
- const token=++caseToken;caseContext={...x,angle:state.angle};shown={success:12,failure:12};caseResults=[];
- $('#case-grid').replaceChildren();$('#case-status').textContent='Loading image pairs…';
+ const token=++caseToken;caseContext={...x,angle:state.angle};shown={success:previewCount(),failure:previewCount()};caseResults=[];
+ const grid=$('#case-grid'),cols=innerWidth>=1100?4:innerWidth>=740?3:2;
+ const thumb=((grid.clientWidth-24)/2-(cols-1)*10)/cols;grid.style.minHeight=Math.max(200,2*thumb*454/400+110)+'px';
+ grid.replaceChildren();$('#case-status').textContent='Loading image pairs…';
  const key=`${x.task}--${x.method}--${x.res}--${x.precision}`;
  try{
   let data=caseCache.get(key);if(!data){const response=await fetch(`cases/${key}.json`);if(!response.ok)throw Error('Unavailable');data=await response.json();caseCache.set(key,data);}
-  if(token!==caseToken||!galleryOpen)return;caseResults=data;$('#case-status').textContent='';renderCases();
+  if(token!==caseToken||!galleryOpen)return;caseResults=data;$('#case-status').textContent='';renderCases();if(window.Motion&&!reducedMotion())motionControls.push(Motion.animate('#case-grid',{opacity:[0,1],y:[12,0]},{duration:.3,delay:.38}));
  }catch(error){if(token===caseToken&&galleryOpen){$('#case-status').innerHTML='Image pairs could not be loaded. <button class="text-button" id="retry-cases">Retry</button>';$('#retry-cases').onclick=loadCases;}}
 }
 function renderCases(){
@@ -173,7 +243,8 @@ function openEvidence(type){const task=tasks.find(x=>x[0]===state.task);$('#pape
 document.addEventListener('click',e=>{const b=e.target.closest('[data-evidence]');if(b)openEvidence(b.dataset.evidence);});
 $('#close-dialog').onclick=()=>$('#paper-dialog').close();$('#close-pair').onclick=()=>$('#pair-dialog').close();
 [$('#paper-dialog'),$('#pair-dialog')].forEach(dialog=>dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();}));
-$('#restart').onclick=reset;$('#relax').onclick=()=>go(2);$('#all-configs').onclick=()=>{closeGallery();layoutTiles(state.step===5?'groups':'rows',true);update();};
+$('#restart').onclick=reset;$('#relax').onclick=()=>go(2);$('#all-configs').onclick=collapseSelection;
 let resizeFrame,observedBoardWidth=0;new ResizeObserver(()=>{const width=$('#board').clientWidth;if(width===observedBoardWidth)return;observedBoardWidth=width;cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>layoutTiles(galleryOpen||state.step===5?'groups':'rows'));}).observe($('#board'));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&galleryOpen&&!document.querySelector('dialog[open]'))collapseSelection();});
 window.demoState=()=>({...state,feasible:feasible().length});
 reset();
