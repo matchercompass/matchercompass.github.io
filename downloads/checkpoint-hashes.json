@@ -1,0 +1,44 @@
+{
+  "checkpoints": [
+    {
+      "checkpoint_id": "superpoint-v1",
+      "source_name": "superpoint_v1.pth",
+      "sha256": "52b6708629640ca883673b5d5c097c4ddad37d8048b33f09c8ca0d69db12c40e"
+    },
+    {
+      "checkpoint_id": "superglue-outdoor",
+      "source_name": "superglue_outdoor.pth",
+      "sha256": "2f5f5e9bb3febf07b69df633c4c3ff7a17f8af26a023aae2b9303d22339195bd"
+    },
+    {
+      "checkpoint_id": "superpoint-lightglue",
+      "source_name": "superpoint_lightglue_v0-1_arxiv.pth",
+      "sha256": "6ff7040d0a497fc6639337946d7538dae07428c18f77a067a0b5a960e7cc551a"
+    },
+    {
+      "checkpoint_id": "efficientloftr-outdoor",
+      "source_name": "eloftr_outdoor.ckpt",
+      "sha256": "0af6291141c736e75e94b7f8aae4399b77c7731b3f08758212b2cfe370188878"
+    },
+    {
+      "checkpoint_id": "dkmv3-outdoor",
+      "source_name": "DKMv3_outdoor.pth",
+      "sha256": "fa2e6d9e3d8ee11455c0ac602bc639899df5e5d2e1809f87b1fbe4af692541b8"
+    },
+    {
+      "checkpoint_id": "mast3r-vitlarge-512-metric",
+      "source_name": "MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth",
+      "sha256": "e28f91b488554653e2b46ddae9c78c1143e0bcb2e27d3e26cdb0b717f1568eb2"
+    },
+    {
+      "checkpoint_id": "loftr-outdoor-ds",
+      "source_name": "outdoor_ds.ckpt",
+      "sha256": "21f5bec5968178e8bc8b7633441836fe5de4f47d861dd2cd7dc38e271b0479ec"
+    },
+    {
+      "checkpoint_id": "matchanything-eloftr",
+      "source_name": "model.safetensors",
+      "sha256": "2f9fab3e87396a9de84488cb08b1cc54c82ab9ba510c737cf0a0945c6354b859"
+    }
+  ]
+}
