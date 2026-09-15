@@ -18,12 +18,13 @@ const lookup=new Map(BENCHMARK.rows.map(x=>[`${x.task}|${x.platform}|${id(x)}`,x
 let state={step:0,task:tasks[0][0],platform:'thor',budget:50,memory:null,energy:null,resolution:null,precision:null,angle:10,sort:'method',selected:null,chosenSteps:[]};
 let caseResults=[], caseToken=0, caseContext=null;
 const caseCache=new Map();
-let shown={success:12,failure:12};
 let galleryOpen=false;
+let exampleMeta=null,exampleCategory="success",exampleIndex=0,drawToken=0;
+let currentDrawing=null;
+const overlayCache=new Map();
 let transitionToken=0;
 let motionControls=[];
 const reducedMotion=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
-const previewCount=()=>innerWidth>=1100?8:innerWidth>=740?6:4;
 const nodes=new Map();
 const fmt=(x,n=1)=>x==null?'—':x.toFixed(n);
 const escapeText=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -61,7 +62,7 @@ function layoutTiles(mode,animate=false,origins=null){
   const labels=document.createElement('div');labels.className='board-labels';board.replaceChildren(labels,...nodes.values());
  }
  const labels=board.querySelector('.board-labels');labels.replaceChildren();
- const compact=galleryOpen;
+ const compact=false;
  board.style.width=compact?Math.max(board.parentElement.clientWidth,methods.length*190)+'px':'100%';
  const width=board.clientWidth, rows=currentRows(), eligible=feasible();
  const positions=new Map(), groups=methods.map(m=>eligible.filter(x=>x.method===m.id)), tags=recommendations(eligible);
@@ -132,11 +133,12 @@ function renderQuestion(){
   $('#res-filter').value=state.resolution??'';$('#precision-filter').value=state.precision??'';$('#energy-filter').value=state.energy??'';
   $('#apply-filters').onclick=()=>{const input=$('#energy-filter');if(!input.reportValidity())return;state.resolution=Number($('#res-filter').value)||null;state.precision=$('#precision-filter').value||null;state.energy=input.value===''?null:Number(input.value);go(5);};
   $('#question').querySelectorAll('[data-budget]').forEach(b=>b.onclick=()=>{state.budget=b.dataset.budget==='null'?null:Number(b.dataset.budget);go(5);});
-  $('#angle-filter').value=state.angle;$('#angle-filter').onchange=e=>{state.angle=Number(e.target.value);update();if(galleryOpen){renderSelection();caseContext.angle=state.angle;renderCases();}layoutTiles('groups');};
+  $('#angle-filter').value=state.angle;$('#angle-filter').onchange=e=>{state.angle=Number(e.target.value);update();if(galleryOpen){renderSelection();caseContext.angle=state.angle;exampleIndex=-1;renderCases();}layoutTiles('groups');};
   $('#sort').value=state.sort;$('#sort').onchange=e=>{state.sort=e.target.value;layoutTiles('groups',true);};$('#edit').onclick=()=>go(0);
+  const fold=document.createElement('details');fold.className='adjust-requirements';const label=document.createElement('summary');label.textContent='Adjust requirements';fold.append(label,...$('#question').children);$('#question').replaceChildren(fold);
  }
 }
-function choose(value){if(galleryOpen){closeGallery();layoutTiles('rows');}if(!state.chosenSteps.includes(state.step))state.chosenSteps.push(state.step);const field=['task','platform','budget','memory','angle'][state.step];state[field]=state.step<2?value:value==='null'?null:Number(value);renderQuestion();update();}
+function choose(value){if(galleryOpen)closeGallery();if(!state.chosenSteps.includes(state.step))state.chosenSteps.push(state.step);const field=['task','platform','budget','memory','angle'][state.step];state[field]=state.step<2?value:value==='null'?null:Number(value);renderQuestion();update();}
 function renderSteps(){
  const complete=state.step===5;
  $('#steps').innerHTML=`<span class="step-position">${complete?'Requirements set':`Step ${state.step+1} of 5`}</span><div class="step-track">${titles.slice(0,5).map((t,i)=>`<button type="button" class="step-segment ${i===state.step?'current':i<state.step?'done':''}" ${i>state.step?'disabled':''} data-step="${i}" aria-label="${t}${i<state.step?', completed':''}" ${i===state.step?'aria-current="step"':''} title="${t}"></button>`).join('')}</div>`;
@@ -158,10 +160,10 @@ function update(){
  $('#summary').innerHTML=answers.map(a=>`<button type="button" data-edit-step="${a.step}" title="Change ${titles[a.step].toLowerCase()}">${a.text}</button>`).join('')+[state.resolution?`${state.resolution} px`:null,state.precision?state.precision.toUpperCase():null,state.energy!==null?`≤ ${state.energy} J`:null].filter(Boolean).map(x=>`<span>${x}</span>`).join('');
  $('#summary').querySelectorAll('[data-edit-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.editStep)));
 
- $('#board-title').textContent=galleryOpen?'Compare another configuration':state.step===5?'Matching configurations':'Configurations';
+ $('#board-title').textContent=state.step===5?'Matching configurations':'Configurations';
  $('#evidence').hidden=state.step!==5;$('#announcement').textContent=`${titles[state.step]}, ${valid.length} configurations remaining`;
 }
-function closeGallery(){stopTransition();caseToken++;galleryOpen=false;state.selected=null;caseContext=null;$('#workspace').classList.remove('inspecting');$('#case-section').hidden=true;$('#all-configs').hidden=true;}
+function closeGallery(){stopTransition();drawToken++;caseToken++;galleryOpen=false;state.selected=null;caseContext=null;$('#workspace').classList.remove('inspecting');$('#case-section').hidden=true;$('#all-configs').hidden=true;}
 function go(step){if(step>state.step&&!isChosen(state.step))return;closeGallery();state.step=step;if((step===3||step===4)&&!isChosen(step))state.chosenSteps.push(step);document.body.dataset.step=String(step);renderSteps();renderQuestion();layoutTiles(step===5?'groups':'rows',true);update();if(!reducedMotion()&&window.Motion)Motion.animate('#question',{opacity:[0,1],y:[8,0]},{duration:.22});}
 function reset(){closeGallery();state={step:0,task:tasks[0][0],platform:'thor',budget:50,memory:null,energy:null,resolution:null,precision:null,angle:10,sort:'method',selected:null,chosenSteps:[]};go(0);}
 function stopTransition(){
@@ -169,50 +171,15 @@ function stopTransition(){
  document.querySelectorAll('.tile-transition').forEach(e=>e.remove());
  $('#selection-card').style.opacity='';$('#case-grid').style.opacity='';$('#inspect').style.opacity='';$('#inspect').style.transform='';
 }
-function morphTile(from,to,color,reverse=false){
- if(reducedMotion()||!window.Motion||!from.width||!to.width)return Promise.resolve();
- const ghost=document.createElement('div');ghost.className='tile-transition';ghost.setAttribute('aria-hidden','true');
- Object.assign(ghost.style,{left:from.left+'px',top:from.top+'px',width:from.width+'px',height:from.height+'px',background:reverse?'#f6f8f4':color,borderRadius:reverse?'10px':'6px'});
- document.body.append(ghost);
- const control=Motion.animate(ghost,{left:to.left,top:to.top,width:to.width,height:to.height,backgroundColor:reverse?color:'#f6f8f4',borderRadius:reverse?'6px':'10px'},{duration:.42,ease:[.22,1,.36,1]});
- motionControls.push(control);return Promise.resolve(control).then(()=>ghost.remove());
-}
-function revealScroll(element){
- const rect=element.getBoundingClientRect(), current=window.scrollY;
- const target=rect.top<20||rect.top>innerHeight*.5?Math.max(0,current+rect.top-24):current;
- if(target!==current){
-  if(window.Motion&&!reducedMotion()){const c=Motion.animate(current,target,{duration:.42,ease:[.22,1,.36,1],onUpdate:y=>window.scrollTo({top:y,behavior:'instant'})});motionControls.push(c);}
-  else window.scrollTo({top:target,behavior:'instant'});
- }
- return target-current;
-}
-async function selectConfiguration(key){
- stopTransition();const token=transitionToken;
- const from=nodes.get(key).getBoundingClientRect();
- const origins=new Map([...nodes].map(([k,b])=>[k,b.getBoundingClientRect()]));
- state.selected=key;galleryOpen=true;$('#workspace').classList.add('inspecting');$('#case-section').hidden=false;$('#all-configs').hidden=false;
+function selectConfiguration(key){
+ stopTransition();state.selected=key;galleryOpen=true;
+ $('#workspace').classList.add('inspecting');$('#case-section').hidden=false;$('#all-configs').hidden=false;
  const x=currentRows().find(x=>id(x)===key),m=methods.find(m=>m.id===x.method);
  $('#selection-card').style.setProperty('--selected-color',m.color);
- renderSelection();const loading=loadCases();layoutTiles('groups',true,origins);update();
- const card=$('#selection-card'),rect=card.getBoundingClientRect(),delta=revealScroll(card);
- const target={left:rect.left,top:rect.top-delta,width:rect.width,height:rect.height};
- if(!reducedMotion()&&window.Motion)card.style.opacity='0';
- await morphTile(from,target,m.color);
- if(token!==transitionToken)return;
- card.style.opacity='';
- if(window.Motion&&!reducedMotion()){motionControls.push(Motion.animate('#inspect',{opacity:[0,1],y:[5,0]},{duration:.2}));}
- $('#all-configs').focus({preventScroll:true});
- await loading;
+ update();renderSelection();loadCases();
+ if(window.Motion&&!reducedMotion())motionControls.push(Motion.animate('#inspect',{opacity:[0,1]},{duration:.16}));
 }
-async function collapseSelection(){
- const key=state.selected;if(!key)return;
- const origins=new Map([...nodes].map(([k,b])=>[k,b.getBoundingClientRect()]));
- const from=$('#selection-card').getBoundingClientRect(),color=methods.find(m=>m.id===key.split(':')[0]).color;
- closeGallery();const token=transitionToken;layoutTiles(state.step===5?'groups':'rows',true,origins);update();
- const tile=nodes.get(key),rect=tile.getBoundingClientRect(),delta=revealScroll(tile);
- await morphTile(from,{left:rect.left,top:rect.top-delta,width:rect.width,height:rect.height},color,true);
- if(token===transitionToken)tile.focus({preventScroll:true});
-}
+function collapseSelection(){const key=state.selected;closeGallery();update();if(key)nodes.get(key).focus({preventScroll:true});}
 
 function renderSelection(){
  const x=currentRows().find(x=>id(x)===state.selected);if(!x)return;
@@ -221,33 +188,70 @@ function renderSelection(){
 }
 async function loadCases(){
  const x=currentRows().find(x=>id(x)===state.selected);if(!x)return;
- const token=++caseToken;caseContext={...x,angle:state.angle};shown={success:previewCount(),failure:previewCount()};caseResults=[];
- const grid=$('#case-grid'),cols=innerWidth>=1100?4:innerWidth>=740?3:2;
- const thumb=((grid.clientWidth-24)/2-(cols-1)*10)/cols;grid.style.minHeight=Math.max(200,2*thumb*454/400+110)+'px';
- grid.replaceChildren();$('#case-status').textContent='Loading image pairs…';
+ const token=++caseToken;drawToken++;caseContext={...x,angle:state.angle};caseResults=[];exampleMeta=null;currentDrawing=null;exampleIndex=-1;exampleCategory='success';
+ $('#case-grid').replaceChildren();$('#case-status').textContent='Loading examples…';
  const key=`${x.task}--${x.method}--${x.res}--${x.precision}`;
  try{
-  let data=caseCache.get(key);if(!data){const response=await fetch(`cases/${key}.json`);if(!response.ok)throw Error('Unavailable');data=await response.json();caseCache.set(key,data);}
-  if(token!==caseToken||!galleryOpen)return;caseResults=data;$('#case-status').textContent='';renderCases();if(window.Motion&&!reducedMotion())motionControls.push(Motion.animate('#case-grid',{opacity:[0,1],y:[12,0]},{duration:.3,delay:.38}));
- }catch(error){if(token===caseToken&&galleryOpen){$('#case-status').innerHTML='Image pairs could not be loaded. <button class="text-button" id="retry-cases">Retry</button>';$('#retry-cases').onclick=loadCases;}}
+  let data=caseCache.get(key);
+  if(!data){const response=await fetch(`cases/${key}.json`);if(!response.ok)throw Error('Unavailable');data=await response.json();caseCache.set(key,data);}
+  const response=await fetch(`correspondences/${key}.json`);if(!response.ok)throw Error('Unavailable');const meta=await response.json();
+  if(token!==caseToken||!galleryOpen)return;caseResults=data;exampleMeta=meta;$('#case-status').textContent='';
+  if(!meta.angles[state.angle].success.length)exampleCategory='failure';renderCases();
+ }catch(error){if(token===caseToken&&galleryOpen){$('#case-status').innerHTML='Examples could not be loaded. <button class="text-button" id="retry-cases">Retry</button>';$('#retry-cases').onclick=loadCases;}}
 }
 function renderCases(){
- const x=caseContext;if(!x)return;const passes=r=>r.error!==null&&r.error<=x.angle;
- $('#case-grid').innerHTML=['success','failure'].map(category=>{
-  const records=caseResults.filter(r=>passes(r)===(category==='success'));
-  return `<section class="case-category" aria-label="${category} examples"><h3>${category==='success'?'Success':'Failure'} <span>${records.length}</span><small>${category==='success'?`≤ ${x.angle}°`:`> ${x.angle}° or not estimated`}</small></h3><div class="image-grid">${records.slice(0,shown[category]).map(r=>`<button class="pair-preview" type="button" data-pair="${r.pair}" aria-label="${category==='success'?'Success':'Failure'}, pose error ${r.error===null?'not estimated':fmt(r.error,2)+' degrees'}, ${r.matches} correspondences"><img src="assets/pairs/${r.pair}.webp" width="400" height="454" loading="lazy" decoding="async" alt="Evaluated input image pair"><span class="pair-overlay"><strong>${r.error===null?'Pose not estimated':fmt(r.error,2)+'° pose error'}</strong><span>${r.matches.toLocaleString()} correspondences</span></span></button>`).join('')||'<p class="empty-category">No pairs</p>'}</div>${shown[category]<records.length?`<button class="more-pairs text-button" data-more="${category}">Show more · ${Math.min(shown[category],records.length)} / ${records.length}</button>`:''}</section>`;
- }).join('');
- $('#case-grid').querySelectorAll('[data-more]').forEach(b=>b.onclick=()=>{shown[b.dataset.more]+=12;renderCases();});
- $('#case-grid').querySelectorAll('[data-pair]').forEach(b=>b.onclick=()=>openPair(b.dataset.pair));
+ if(!exampleMeta||!caseContext)return;
+ const sets=exampleMeta.angles[state.angle],passes=r=>r.error!==null&&r.error<=state.angle;
+ if(!sets[exampleCategory].length)exampleCategory=sets.success.length?'success':'failure';
+ const samples=sets[exampleCategory];exampleIndex=exampleIndex<0?Math.floor(samples.length/2):Math.min(exampleIndex,Math.max(0,samples.length-1));
+ const success=caseResults.filter(passes).length;
+ $('#case-grid').innerHTML=`<div class="example-tabs" role="tablist" aria-label="Example outcomes">${['success','failure'].map(cat=>`<button role="tab" aria-selected="${cat===exampleCategory}" data-category="${cat}" ${!sets[cat].length?'disabled':''}>${cat==='success'?'Success':'Failure'} <span>${cat==='success'?success:caseResults.length-success}</span></button>`).join('')}</div><button class="match-preview" id="match-preview" aria-label="Enlarge correspondence image"><canvas id="match-canvas"></canvas><span class="viewer-loading" id="viewer-loading">Loading correspondences…</span></button><div class="example-caption"><span id="example-error"></span><label><input type="checkbox" id="show-matches" checked> Matches</label></div><div class="example-thumbnails">${samples.map((uid,i)=>`<button data-example="${i}" aria-label="Example ${i+1} of ${samples.length}" aria-pressed="${i===exampleIndex}"><img src="assets/pairs/${uid}.webp" alt="Image pair example" loading="lazy"></button>`).join('')}</div><p class="example-count">${samples.length} examples · ${exampleCategory==='success'?`pose error ≤ ${state.angle}°`:`pose error > ${state.angle}° or not estimated`}</p><details class="example-notes"><summary>About these examples</summary><p>Examples span the pose-error range within each outcome. Summary metrics use all 100 pairs. Green/red correspondences pass/fail the reference-pose epipolar test. All returned correspondences are drawn.</p></details>`;
+ $('#case-grid').querySelectorAll('[data-category]').forEach(b=>b.onclick=()=>{exampleCategory=b.dataset.category;exampleIndex=-1;renderCases();});
+ $('#case-grid').querySelectorAll('[data-example]').forEach(b=>b.onclick=()=>{exampleIndex=Number(b.dataset.example);renderCases();});
+ $('#show-matches').onchange=()=>paintMatches();$('#match-preview').onclick=openMatchImage;
+ drawExample(samples[exampleIndex]);
 }
-function openPair(pair){const r=caseResults.find(r=>r.pair===pair);if(!r)return;$('#pair-title').textContent=r.error!==null&&r.error<=caseContext.angle?'Success':'Failure';$('#pair-image').src=`assets/pairs/${r.pair}.webp`;$('#pair-values').textContent=`Pose error: ${r.error===null?'not estimated':fmt(r.error,2)+'°'} · ${r.matches.toLocaleString()} correspondences`;$('#pair-dialog').showModal();}
+async function drawExample(uid){
+ const token=++drawToken,info=exampleMeta.pairs[uid],record=caseResults.find(r=>r.pair===uid);
+ currentDrawing=null;
+ try{
+  const img=new Image();img.src=`assets/pairs/${uid}.webp`;
+  let bytes=overlayCache.get(info.file);
+  if(!bytes){const response=await fetch(`correspondences/${info.file}`);if(!response.ok)throw Error('Unavailable');bytes=await response.arrayBuffer();overlayCache.set(info.file,bytes);}
+  await img.decode();if(token!==drawToken||!galleryOpen)return;
+  const count=new DataView(bytes).getUint32(0,true);if(count!==record.matches||bytes.byteLength!==4+count*9)throw Error('Invalid correspondence data');
+  currentDrawing={img,info,record,xy:new Uint16Array(bytes,4,count*4),valid:new Uint8Array(bytes,4+count*8,count),count};
+  $('#viewer-loading').hidden=true;
+  $('#example-error').textContent=`${record.error===null?'Pose not estimated':fmt(record.error,2)+'° pose error'} · ${count.toLocaleString()} matches`;
+  paintMatches();
+ }catch(error){if(token===drawToken&&galleryOpen){$('#viewer-loading').textContent='Correspondences unavailable';$('#example-error').textContent='';}}
+}
+function paintMatches(){
+ if(!currentDrawing)return;const {img,info,xy,valid,count}=currentDrawing,L=info.layout;
+ const canvas=$('#match-canvas');if(!canvas)return;
+ const width=L.width,height=Math.max(L.a.size[1],L.b.size[1]),gap=12;
+ canvas.width=2*width+gap;canvas.height=height;const ctx=canvas.getContext('2d');ctx.fillStyle='#f6f7f5';ctx.fillRect(0,0,canvas.width,height);
+ for(const [side,offset] of [['a',0],['b',width+gap]]){const p=L[side];ctx.drawImage(img,p.x,p.y,p.size[0],p.size[1],offset+p.x,(height-p.size[1])/2,p.size[0],p.size[1]);}
+ if(!$('#show-matches').checked)return;
+ const alpha=count>2000?.13:count>500?.3:.7;
+ for(let group=0;group<2;group++){
+  ctx.strokeStyle=group?`rgba(29,190,78,${alpha})`:`rgba(234,68,67,${alpha})`;ctx.lineWidth=.7;ctx.beginPath();
+  for(let i=0;i<count;i++){if(valid[i]!==group)continue;const j=i*4;
+   const ax=xy[j]/65535*width,ay=xy[j+1]/65535*L.height+(height-L.a.size[1])/2;
+   const bx=xy[j+2]/65535*width+width+gap,by=xy[j+3]/65535*L.height-L.b.y+(height-L.b.size[1])/2;
+   ctx.moveTo(ax,ay);ctx.lineTo(bx,by);
+  }ctx.stroke();
+ }
+}
+function openMatchImage(){if(!currentDrawing)return;const r=currentDrawing.record;$('#pair-title').textContent=r.error!==null&&r.error<=state.angle?'Success':'Failure';$('#pair-image').src=$('#match-canvas').toDataURL('image/png');$('#pair-values').textContent=`Pose error: ${r.error===null?'not estimated':fmt(r.error,2)+'°'} · ${r.matches.toLocaleString()} correspondences`;$('#pair-dialog').showModal();}
+
 function openEvidence(type){const task=tasks.find(x=>x[0]===state.task);$('#paper-ref').textContent=type==='figure4'?'FIGURE 4':'TABLE V';$('#paper-title').textContent=type==='figure4'?'Accuracy across resolutions and hardware':'Accuracy and runtime across precisions';$('#paper-image').src=`assets/${type}.png`;$('#paper-context').textContent=type==='figure4'?'Four visual conditions; RUBIK at 256 / 512 px. FP32 / Native.':'RUBIK · 512 px · FP32 / MP / FP16.';$('#paper-dialog').showModal();}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-evidence]');if(b)openEvidence(b.dataset.evidence);});
 $('#close-dialog').onclick=()=>$('#paper-dialog').close();$('#close-pair').onclick=()=>$('#pair-dialog').close();
 [$('#paper-dialog'),$('#pair-dialog')].forEach(dialog=>dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();}));
 $('#restart').onclick=reset;$('#relax').onclick=()=>go(2);$('#all-configs').onclick=collapseSelection;
-let resizeFrame,observedBoardWidth=0;new ResizeObserver(()=>{const width=$('#board').clientWidth;if(width===observedBoardWidth)return;observedBoardWidth=width;cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>layoutTiles(galleryOpen||state.step===5?'groups':'rows'));}).observe($('#board'));
+let resizeFrame,observedBoardWidth=0;new ResizeObserver(()=>{const width=$('#board').clientWidth;if(width===observedBoardWidth)return;observedBoardWidth=width;cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>layoutTiles(state.step===5?'groups':'rows'));}).observe($('#board'));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&galleryOpen&&!document.querySelector('dialog[open]'))collapseSelection();});
-window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>layoutTiles(galleryOpen||state.step===5?'groups':'rows'));});
+window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>layoutTiles(state.step===5?'groups':'rows'));});
 window.demoState=()=>({...state,feasible:feasible().length});
 reset();

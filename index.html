@@ -5,21 +5,20 @@
 <header><a class="brand" href="./">Matcher<span>Compass</span></a><div class="header-right"><button class="text-button" id="restart">Start over</button></div></header>
 <main>
 <section class="project-heading"><h1>Matcher selection</h1><p>A Deployment-Aware Benchmark to Guide Image Matcher Selection in the Wild</p><nav><a href="#downloads">Data</a><a href="measurement.html">Measurement details</a></nav></section>
-<nav class="steps" aria-label="Selection steps" id="steps"></nav>
-<section class="question" id="question" aria-label="Selection controls"></section>
-<div class="selection-summary" id="summary"></div>
 <div class="workspace" id="workspace">
-<section id="case-section" class="case-section" hidden aria-label="Image pair results">
-<div id="selection-card" class="selection-card"><button class="text-button close-selection" id="all-configs" hidden>← All configurations</button><div id="inspect" class="inspect" hidden></div></div>
-<div id="case-status" role="status"></div>
-<div id="case-grid" class="case-columns"></div>
-</section>
 <section class="canvas" aria-label="Matching configurations">
 <div class="canvas-head"><h2 id="board-title">Configurations</h2><div class="count"><strong id="count">84</strong><span id="count-label">evaluated</span></div></div>
+<div class="selection-summary" id="summary"></div>
 <div class="board-scroll"><div class="board" id="board"></div></div>
 <div class="board-foot"><span><i class="legend-on"></i>Available</span><span><i class="legend-off"></i>Excluded</span><span><i class="legend-rec"></i>Highest pose AUC</span></div>
 <div class="empty" id="empty" hidden><h3>No configurations meet these limits.</h3><button class="primary" id="relax">Edit limits</button></div>
 </section>
+<aside class="selection-sidebar"><nav class="steps" aria-label="Selection steps" id="steps"></nav><section class="question" id="question" aria-label="Selection controls"></section><section id="case-section" class="case-section" hidden aria-label="Image pair results">
+<div id="selection-card" class="selection-card"><button class="text-button close-selection" id="all-configs" hidden>Close results</button><div id="inspect" class="inspect" hidden></div></div>
+<div id="case-status" role="status"></div>
+<div id="case-grid" class="example-viewer"></div>
+</section>
+</aside>
 </div>
 <section class="evidence" id="evidence" hidden><details><summary>Results in the paper</summary><div class="evidence-links"><button data-evidence="figure4"><span>FIGURE 4</span><strong>Accuracy across resolutions and hardware</strong><small>Four visual conditions · FP32 / Native</small></button><button data-evidence="table5"><span>TABLE V</span><strong>Accuracy and runtime across precisions</strong><small>RUBIK · 512 px · FP32 / MP / FP16</small></button></div></details></section>
 <section class="downloads" id="downloads"><h2>Download data</h2><div class="download-links"><a href="downloads/accuracy.csv" download>Accuracy · 336 configurations</a><a href="downloads/resources.csv" download>Resources · 1,344 measurements</a><a href="downloads/pair-results.csv" download>Pair results · 33,600 pairs</a><a href="downloads/input-pairs.csv" download>Input manifest · 400 pairs</a></div></section>
