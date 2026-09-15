@@ -69,7 +69,8 @@ function layoutTiles(mode,animate=false,origins=null){
  const positions=new Map(), groups=methods.map(m=>eligible.filter(x=>x.method===m.id)), tags=recommendations(eligible);
  const gap=compact?7:8;
  const boardTop=board.getBoundingClientRect().top+window.scrollY;
- const rowFit=Math.floor((innerHeight-boardTop-86)/methods.length)-6;
+ const uiScale=Number(getComputedStyle(document.documentElement).getPropertyValue('--ui-scale'))||1;
+ const rowFit=Math.floor(((innerHeight-boardTop)/uiScale-86)/methods.length)-6;
  const tile=compact?32:Math.max(28,Math.min(innerHeight<820?32:40,Math.floor((width-236)/15),mode==='rows'&&innerWidth>740?rowFit:40));
  const pitch=tile+gap;
  function label(text,x,y,cls,width){const e=document.createElement('div');e.className=cls;e.style.left=x+'px';e.style.top=y+'px';if(width)e.style.width=width+'px';e.innerHTML=text;labels.append(e);}
@@ -113,7 +114,7 @@ function layoutTiles(mode,animate=false,origins=null){
   b.classList.toggle('recommended',mode==='groups'&&tags.has(id(x)));
   if(p){b.style.left=p.x+'px';b.style.top=p.y+'px';}
   b.getAnimations().forEach(a=>a.cancel());
-  if(p&&animate&&!reduce&&from?.width)b.animate([{transform:`translate(${from.left-box.left-p.x}px,${from.top-box.top-p.y}px)`},{transform:'translate(0,0)'}],{duration:500,easing:'cubic-bezier(.22,1,.36,1)'});
+  if(p&&animate&&!reduce&&from?.width)b.animate([{transform:`translate(${(from.left-box.left)/uiScale-p.x}px,${(from.top-box.top)/uiScale-p.y}px)`},{transform:'translate(0,0)'}],{duration:500,easing:'cubic-bezier(.22,1,.36,1)'});
  });
  $('#empty').hidden=mode!=='groups'||eligible.length!==0;
 }
@@ -262,6 +263,16 @@ $('#close-dialog').onclick=()=>$('#paper-dialog').close();$('#close-pair').oncli
 $('#restart').onclick=reset;$('#relax').onclick=()=>go(2);$('#all-configs').onclick=collapseSelection;
 let resizeFrame,observedBoardWidth=0;new ResizeObserver(()=>{const width=$('#board').clientWidth;if(width===observedBoardWidth)return;observedBoardWidth=width;cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>layoutTiles(state.step===5?'groups':'rows'));}).observe($('#board'));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&galleryOpen&&!document.querySelector('dialog[open]'))collapseSelection();});
-window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>layoutTiles(state.step===5?'groups':'rows'));});
+function updateUIScale(){
+ const main=document.querySelector('main'),css=getComputedStyle(main);
+ const currentWidth=main.getBoundingClientRect().width-parseFloat(css.paddingLeft)-parseFloat(css.paddingRight);
+ const previousWidth=Math.min(document.body.clientWidth,1800)-innerWidth*.06;
+ const scale=innerWidth>740?Math.max(1,currentWidth/previousWidth):1;
+ document.documentElement.style.setProperty('--ui-scale',String(scale));
+ const top=$('#workspace').getBoundingClientRect().top+scrollY;
+ document.documentElement.style.setProperty('--sidebar-limit',Math.max(260,(innerHeight-top-16)/scale)+'px');
+}
+window.addEventListener('resize',()=>{updateUIScale();cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>layoutTiles(state.step===5?'groups':'rows'));});
+updateUIScale();
 window.demoState=()=>({...state,feasible:feasible().length});
 reset();

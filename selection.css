@@ -50,3 +50,7 @@
 .selection-sidebar .task-option .variation{display:block;font-size:14px;font-weight:650;line-height:1.35;margin-top:3px;color:var(--ink)}.selection-sidebar .task-option small{font-size:11.5px;margin-top:6px}.selection-sidebar .task-option{padding-top:13px;padding-bottom:13px}
 
 .task-preview{display:block;width:100%;height:auto;margin-top:9px;border-radius:3px}.match-legend{display:flex;flex-wrap:wrap;gap:6px 10px;color:var(--muted);font-size:11px;margin:12px 0}.match-legend span{display:inline-flex;align-items:center;gap:4px}.match-legend i{width:7px;height:7px;display:inline-block;border-radius:50%}.geometry-pass{background:#1dbe4e}.geometry-fail{background:#ea4443}
+
+/* Expand the working UI proportionally into the recovered outer margins. */
+:root{--ui-scale:1}
+@media(min-width:741px){main>*{zoom:var(--ui-scale);width:100%}.selection-sidebar{max-height:var(--sidebar-limit,calc(100dvh - 150px))}}
