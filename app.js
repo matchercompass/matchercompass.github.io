@@ -217,7 +217,7 @@ async function drawExample(uid){
  try{
   const img=new Image();img.src=`assets/pairs/${uid}.webp`;
   let bytes=overlayCache.get(info.file);
-  if(!bytes){const response=await fetch(`correspondences/${info.file}`);if(!response.ok)throw Error('Unavailable');bytes=await response.arrayBuffer();overlayCache.set(info.file,bytes);}
+  if(!bytes){const response=await fetch(`correspondences/${info.file}?v=1`);if(!response.ok)throw Error('Unavailable');bytes=await response.arrayBuffer();overlayCache.set(info.file,bytes);}
   await img.decode();if(token!==drawToken||!galleryOpen)return;
   const count=new DataView(bytes).getUint32(0,true);if(count!==record.matches||bytes.byteLength!==4+count*9)throw Error('Invalid correspondence data');
   currentDrawing={img,info,record,xy:new Uint16Array(bytes,4,count*4),valid:new Uint8Array(bytes,4+count*8,count),count};
