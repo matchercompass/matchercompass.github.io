@@ -54,3 +54,11 @@
 /* Expand the working UI proportionally into the recovered outer margins. */
 :root{--ui-scale:1}
 @media(min-width:741px){main>*{zoom:var(--ui-scale);width:100%}.selection-sidebar{max-height:var(--sidebar-limit,calc(100dvh - 150px))}}
+
+/* Leave room for focus outlines inside the scrollable result panel. */
+.selection-sidebar{padding-right:10px;padding-bottom:10px;overflow-x:hidden}
+.selection-sidebar .result-controls{grid-template-columns:repeat(2,minmax(0,1fr))}
+.selection-sidebar .result-controls>*,.selection-sidebar .filter-fields>*{min-width:0;max-width:100%}
+.selection-sidebar input,.selection-sidebar select{min-width:0;max-width:100%;box-sizing:border-box}
+.selection-sidebar .quick-budgets{flex-wrap:wrap}.selection-sidebar .filter-fields a{overflow-wrap:anywhere}
+.tile{transition:background-color .42s,box-shadow .2s}
