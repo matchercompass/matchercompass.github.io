@@ -116,14 +116,14 @@ function layoutTiles(mode,animate=false,origins=null){
  });
  $('#empty').hidden=mode!=='groups'||eligible.length!==0;
 }
-function option(value,label,sub,current){return `<button type="button" class="option ${current===value?'chosen':''}" data-value="${value}" aria-pressed="${current===value}"><strong>${label}</strong>${sub?`<small>${sub}</small>`:''}</button>`;}
+function option(value,label,sub,current,variation=''){return `<button type="button" class="option ${variation?'task-option':''} ${current===value?'chosen':''}" data-value="${value}" aria-pressed="${current===value}"><strong>${label}</strong>${variation?`<span class="variation">${variation}</span>`:''}${sub?`<small>${sub}</small>`:''}</button>`;}
 function renderQuestion(){
  const s=state.step;
  if(s<5){
   const headings=['Which images will you match?','Which hardware will run the matcher?','What is your matching time budget?','Do you have a GPU memory limit?','Which pose error is acceptable?'];
   const descriptions=['Choose the closest evaluated condition.','','Median time per pair, excluding model loading and pose estimation.','Optional. Includes the model and matching allocations.','The threshold used to report pose AUC and successful pairs.'];
   let options;
-  if(s===0){const labels=[['Visible–Visible','Viewpoint variation · RUBIK'],['Visible–Visible','Day–night · STheReO'],['Visible–Thermal','Daytime · STheReO'],['Thermal–Thermal','Day–night · STheReO']];options=tasks.map((x,i)=>option(x[0],labels[i][0],labels[i][1],isChosen(0)?state.task:undefined)).join('');}
+  if(s===0){const labels=[['Visible–Visible','Viewpoint variation','RUBIK'],['Visible–Visible','Day–Night','STheReO'],['Visible–Thermal','Daytime','STheReO'],['Thermal–Thermal','Day–Night','STheReO']];options=tasks.map((x,i)=>option(x[0],labels[i][0],labels[i][2],isChosen(0)?state.task:undefined,labels[i][1])).join('');}
   if(s===1)options=platforms.map(x=>option(x[0],x[1],x[2],isChosen(1)?state.platform:undefined)).join('');
   if(s>=2){const choices=s===2?[10,20,50,100,null]:s===3?[0.5,1,2,null]:[5,10,20];const field=['','','budget','memory','angle'][s];options=choices.map(x=>option(x,x===null?'No limit':s===2?`${x} ms`:s===3?`${x} GiB`:`${x}°`,'',isChosen(s)?state[field]:undefined)).join('');}
   $('#question').innerHTML=`<div class="question-title"><h2>${headings[s]}</h2>${descriptions[s]?`<p>${descriptions[s]}</p>`:''}</div><div class="options">${options}</div><div class="actions">${s?'<button class="back" id="back" aria-label="Previous step">← Back</button>':''}<button class="primary" id="next" ${isChosen(s)?'':'disabled'}>${s===4?'Show results':'Continue'} →</button></div>`;
